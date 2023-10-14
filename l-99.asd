@@ -6,10 +6,14 @@
   :license  "MIT"
   :version "1.0.0"
   :serial t
-  :depends-on (#:alexandria #:fg-utils #:parachute)
+  :depends-on (#:fg-utils #:parachute)
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")
-                             (:file "lists")))
+                             (:file "lists")
+                             (:file "arithmetic")))
                (:module "test"
-                :serial t)))
+                :serial t
+                :components ((:file "lists"))))
+  :perform (test-op (op system)
+                    (uiop:symbol-call :parachute :test :l-99/tests)))

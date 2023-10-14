@@ -94,19 +94,16 @@
     
 (defun pack (list)
   "P09 (**) Pack consecutive duplicates of list elements into sublists"
-  (labels ((recur (packed list acc)
-             (cond
-               ((endp list) (reverse. (cons packed acc)))
-               ((eql (car packed) (car list))
-                (recur (cons (car list) packed)
-                       (cdr list)
-                       acc))
-               (t (recur (list (car list))
-                         (cdr list)
-                         (cons packed acc))))))
-    (recur (list (car list)) (cdr list) nil)))
-
-(pack '(a a a a b c c a a d e e e e))
+  (nlet recur ((packed (list (car list))) (list (cdr list)) (acc nil))
+    (cond
+      ((endp list) (reverse. (cons packed acc)))
+      ((eql (car packed) (car list))
+       (recur (cons (car list) packed)
+              (cdr list)
+              acc))
+      (t (recur (list (car list))
+                (cdr list)
+                (cons packed acc))))))
 
 (defun pack/loop (list)
   "P09 loop version"
@@ -121,42 +118,36 @@
 
 (defun encode (list)
   "P10 (*) Run-length encoding of a list"
-  (labels ((recur (list acc)
-             (if (endp list)
-                 (reverse. acc)
-                 (recur (cdr list)
-                        (cons (list (length. (car list)) (caar list))
-                              acc)))))
-    (recur list nil)))
+  (nlet recur ((list (pack list)) (acc nil))
+    (if (endp list)
+        (reverse. acc)
+        (recur (cdr list)
+               (cons (list (length. (car list)) (caar list))
+                     acc)))))
 
 (defun encode/loop (list)
   "P10 using loop"
-  (loop for x in list
+  (loop for x in (pack/loop list)
         collect (list (length. x) (car x))))
-
-(encode '((A A A A) (B) (C C) (A A) (D)))
 
 (defun encode-modified (list)
   "P11 (*) Modified run-length encoding"
-  (labels ((recur (list acc)
-             (if (endp list)
-                 (reverse. acc)
-                 (let* ((len (length. (car list)))
-                        (elem (if (= 1 len)
-                                  (caar list)
-                                  (list len (caar list)))))
-                   (recur (cdr list)
-                          (cons elem acc))))))
-    (recur list nil)))
+  (nlet recur ((list (encode list)) (acc nil))
+    (if (endp list)
+        (reverse acc)
+        (destructuring-bind (len elem) (car list)
+          (when (> len 1)
+            (setf elem (list len elem)))
+          (recur (cdr list)
+                 (cons elem acc))))))
 
 
 (defun encode-modified/loop (list)
   "P11 loop version"
-  (loop for x in list
-        for len = (length. x)
+  (loop for (len x) in (encode list)
         collect (if (= 1 len)
-                    (car x)
-                    (list len (car x)))))
+                    x
+                    (list len x))))
 
 (defmethod unpack ((packed list))
   (loop repeat (car packed) collect (cadr packed)))
@@ -170,11 +161,6 @@
       nil
       (nconc (unpack (car list)) (decode (cdr list)))))
 
-(defun decode/loop (list)
-  "P12 loop version"
-  (loop
-    for x in list nconc (unpack x)))
-
 (defun decode/map (list)
   "P12 using mapcan"
   (mapcan #'unpack list))
@@ -182,15 +168,14 @@
   
 (defun encode-direct (list)
   "P13 (**) Run-length encoding of a list (direct solution)"
-  (symbol-macrolet ((pack (if (= 1 (car packed)) (cadr packed) packed))
-                    (rec (encode (cdr list) (list 1 (car list)))))
-    (labels ((encode (list packed)
-               (cond ((endp list) (list pack))
-                     ((eql (car list) (cadr packed))
-                      (incf (car packed))
-                      (encode (cdr list) packed))
-                     (t (cons pack rec)))))
-      rec)))
+  (symbol-macrolet ((pack (if (= 1 (car packed)) (cadr packed) packed)))
+    (nlet encode ((list (cdr list)) (packed (list 1 (car list))))
+      (cond ((endp list) (list pack))
+            ((eql (car list) (cadr packed))
+             (incf (car packed))
+             (encode (cdr list) packed))
+            (t (cons pack
+                     (encode (cdr list) (list 1 (car list)))))))))
 
 
 (defun encode-direct/loop (list)
@@ -205,8 +190,6 @@
             do (when packed pack)
                (setf packed (list 1 x))
           finally (return (progn pack (reverse r))))))
-
-(encode-direct '(a a a a b c c a a d e e e e))
 
 (defun dupli (list)
   "P14 (*) Duplicate the elements of a list"
@@ -237,11 +220,10 @@
 (defun drop (list n)
   "P16 (**) Drop every N'th element from a list"
   (symbol-macrolet ((rec (recur (cdr list) n (1+ i))))
-    (labels ((recur (list n i)
-               (cond ((endp list) nil)
-                     ((zerop (mod i n)) rec)
-                     (t (cons (car list) rec)))))
-      (recur list n 1))))
+    (nlet recur ((list list) (n n) (i 1))
+      (cond ((endp list) nil)
+            ((zerop (mod i n)) rec)
+            (t (cons (car list) rec))))))
 
 (defun drop/loop (list n)
   "P16 loop version"
@@ -272,18 +254,17 @@
       (loop for (x . tail) on list
             repeat n
             collect x into head
-            finally (return (list head tail)))
+            finally (return (list head (cons x tail))))
       list))
 
 (defun slice (list i k)
   "P18 (**) Extract a slice from a list"
   (symbol-macrolet ((recur (%slice (cdr list) (1+ n))))
-    (labels ((%slice (list n)
-               (cond
-                 ((or (endp list) (> n k)) nil)
-                 ((< n i) recur)
-                 (t (cons (car list) recur)))))
-      (%slice list 1))))
+    (nlet %slice ((list list) (n 1))
+      (cond
+        ((or (endp list) (> n k)) nil)
+        ((< n i) recur)
+        (t (cons (car list) recur))))))
 
 (defun slice/loop (list i k)
   "P18 loop version"
@@ -291,13 +272,12 @@
         for n from 1 to k
         if (<= i n k)
           collect x))
-        
 
 (defun rotate (list n)
   "P19 (**) Rotate a list N places to the left"
   (let ((n (mod n (length list))))
     (destructuring-bind (a b) (split-at list n)
-      (nconc b a))))
+      (append b a))))
 
 (defun remove-at (list k)
   "P20 (*) Remove the K'th element from a list"
@@ -312,7 +292,7 @@
   "P20 loop version"
   (loop for (x . rest) on list
         for i from 1 to k
-        if (= i k) return (values (nconc r rest) x)
+        if (= i k) return (values (append r rest) x)
         else collect x into r))
 
 (defun insert-at (elem list n)
@@ -325,7 +305,7 @@
   "P21 loop version"
   (loop for (x . rest) on list
         for i from 1 to n
-        if (or (= i n) (endp rest)) nconc (cons elem rest)
+        if (or (= i n) (endp rest)) nconc (list* elem x rest)
         else collect x))
 
 (defun range (from to)
@@ -335,11 +315,12 @@
     ((> from to) (cons from (range (1- from) to)))
     (t (cons from (range (1+ from) to)))))
 
-(defun range/loop (start end &key (step 1))
+(defun range/loop (start end)
   "P22 loop version"
-  (if (< start end)
-      (loop for x from start to end by step collect x)
-      (loop for x from start downto end by step collect x)))
+  (loop with step = (if (> end start) 1 -1)
+        for x = start then (+ x step)
+        until (if (> end start) (> x end) (< x end))
+        collect x))
 
 (defun rnd-select (list n)
   "P23 (**) Extract a given number of randomly selected elements from a list"
@@ -386,7 +367,7 @@
 
 (defun lsort (list)
   "P28-A (**) Sorting a list of lists according to length of sublists"
-  (sort list #'< :key #'length))
+  (sort (copy-list list) #'< :key #'length))
 
 (defun lfsort (list)
   "P28-B (**) Sorting a list of lists according to length frequency of sublists"
