@@ -1,7 +1,11 @@
 ;;;; package.lisp
 
 (defpackage #:l-99
-  (:use #:cl #:fg)
+  (:use #:cl))
+
+(defpackage #:l-99/lists
+  (:use #:cl #:l-99)
+  (:import-from #:fg #:nlet)
   (:export #:last. #:last/loop
            #:butlast. #:butlast/loop
            #:kth #:kth/loop
@@ -32,7 +36,3 @@
            #:multicombine
            #:lsort
            #:lfsort))
-
-
-(defpackage #:l-99/tests
-  (:use #:cl #:fg #:parachute #:l-99))

@@ -14,6 +14,8 @@
                              (:file "arithmetic")))
                (:module "test"
                 :serial t
-                :components ((:file "lists"))))
+                :components ((:file "package")
+                             (:file "tests")
+                             (:file "lists"))))
   :perform (test-op (op system)
-                    (uiop:symbol-call :parachute :test :l-99/tests)))
+                    (uiop:symbol-call '#:l-99/tests '#:run-all-tests)))

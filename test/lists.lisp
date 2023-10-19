@@ -1,4 +1,4 @@
-(in-package #:l-99/tests)
+(in-package #:l-99/tests/lists)
 
 (define-test last
   (is equal '(d) (last. '(a b c d)))
